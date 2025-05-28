@@ -18,14 +18,33 @@ def colorize_failed(line: str) -> str:
     )
 
 
-def run_test(run_num: int, dotnet_args: list[str], show_passed: bool):
+def run_test(run_num: int, additional_dotnet_args: list[str], show_passed: bool):
     run_passed = run_failed = 0
 
     print(f"{LIGHT_BLUE}Starting Run #{run_num}{RESET}")
 
+    dotnet_test_args = []
+    standard_dotnet_test_args = [
+        "dotnet",
+        "test",
+        "-v",
+        "n",
+        "-l",
+        '"console;verbosity=detailed"',
+    ]
+    no_restore_and_build_args = ["--no-restore", "--no-build"]
+
+    if run_num == 1:
+        dotnet_test_args = standard_dotnet_test_args + additional_dotnet_args
+    else:
+        dotnet_test_args = (
+            standard_dotnet_test_args
+            + no_restore_and_build_args
+            + additional_dotnet_args
+        )
+
     process = subprocess.Popen(
-        ["dotnet", "test", "-v", "n", "-l", '"console;verbosity=detailed"']
-        + dotnet_args,
+        dotnet_test_args,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
@@ -127,8 +146,8 @@ def main():
 
     print(f"\n{LIGHT_BLUE}====Test Summary:===={RESET}")
     print(f"Total Runs: {args.runs}")
-    print(f"\n{GREEN}Total Passed: {total_passed}{RESET}")
-    print(f"\n{RED}Total Failed: {total_failed}{RESET}")
+    print(f"{GREEN}Total Passed: {total_passed}{RESET}")
+    print(f"{RED}Total Failed: {total_failed}{RESET}")
 
     if all_failed_namespaces:
         print(f"\n{RED}Failed Tests Summary:{RESET}")
