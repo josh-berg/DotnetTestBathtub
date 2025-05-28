@@ -13,8 +13,8 @@ RESET = "\033[0m"
 
 
 def colorize_failed(line: str) -> str:
-    return line.replace("Failed", f"{RED}Failed{RESET}").replace(
-        "Passed", f"{GREEN}Passed{RESET}"
+    return line.replace("Failed ", f"{RED}Failed {RESET}").replace(
+        "Passed ", f"{GREEN}Passed {RESET}"
     )
 
 
