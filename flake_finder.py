@@ -6,6 +6,8 @@ import re
 
 from argparse import ArgumentParser
 
+MAX_RUNS = 1000  # Maximum number of runs to prevent infinite loops
+
 RED = "\033[0;31m"
 GREEN = "\033[0;32m"
 LIGHT_BLUE = "\033[1;34m"
@@ -18,7 +20,7 @@ def colorize_failed(line: str) -> str:
     )
 
 
-def run_test(run_num: int, dotnet_args: list[str], show_passed: bool):
+def run_test(run_num: int, dotnet_args: list[str]):
     print(f"{LIGHT_BLUE}Starting Run #{run_num}{RESET}")
 
     process = subprocess.Popen(
@@ -43,11 +45,6 @@ def run_test(run_num: int, dotnet_args: list[str], show_passed: bool):
             keep = True
             continue
 
-        # Stop printing lines after a log if run is done
-        if re.search(r"Test Run Successful.", line):
-            keep = False
-            continue
-
         # Total tests line
         if line.startswith("Total tests:"):
             match = re.search(r"Total tests:\s+(\d+)", line)
@@ -61,12 +58,11 @@ def run_test(run_num: int, dotnet_args: list[str], show_passed: bool):
 
         # Per-test result lines (Passed/Failed)
         if re.match(r"^\s+(Passed\s|Failed\s)", line):
-            if line.startswith("Failed "):
+            if "Failed " in line:
                 print(colorize_failed(line))
                 keep = True
             else:
-                if show_passed:
-                    print(colorize_failed(line))
+                print(colorize_failed(line))
                 keep = False
             continue
 
@@ -88,6 +84,8 @@ def run_test(run_num: int, dotnet_args: list[str], show_passed: bool):
     print(
         f"Run {run_num} Complete ({GREEN}Passed: {passed}{RESET} {RED}Failed: {failed}{RESET})"
     )
+    if failed > 0:
+        input("Press any key to continue to next run...")
 
 
 def main():
@@ -95,22 +93,12 @@ def main():
         description="Run dotnet tests multiple times and capture ITestOutputHelper output."
     )
     parser.add_argument(
-        "runs",
-        type=int,
-        help="Number of times to run the tests",
-    )
-    parser.add_argument(
-        "--show-passed",
-        action="store_true",
-        help="Show output for passed tests as well",
-    )
-    parser.add_argument(
         "dotnet_args", nargs="*", help="Additional arguments to pass to dotnet test"
     )
     args = parser.parse_args()
 
-    for i in range(1, args.runs + 1):
-        run_test(i, args.dotnet_args, args.show_passed)
+    for i in range(1, MAX_RUNS):
+        run_test(i, args.dotnet_args)
 
 
 if __name__ == "__main__":
