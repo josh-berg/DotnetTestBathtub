@@ -19,6 +19,8 @@ def colorize_failed(line: str) -> str:
 
 
 def run_test(run_num: int, dotnet_args: list[str], show_passed: bool):
+    run_passed = run_failed = 0
+
     print(f"{LIGHT_BLUE}Starting Run #{run_num}{RESET}")
 
     process = subprocess.Popen(
@@ -53,6 +55,7 @@ def run_test(run_num: int, dotnet_args: list[str], show_passed: bool):
         # Per-test result lines (Passed/Failed)
         if re.match(r"^\s+(Passed\s|Failed\s)", line):
             if "Failed " in line:
+                run_failed += 1
                 print(colorize_failed(line))
                 keep = True
                 # Try to extract the namespace from the test name
@@ -63,6 +66,7 @@ def run_test(run_num: int, dotnet_args: list[str], show_passed: bool):
                 else:
                     failed_test_namespaces.append("<unknown>")
             else:
+                run_passed += 1
                 if show_passed:
                     print(colorize_failed(line))
                 keep = False
@@ -86,7 +90,7 @@ def run_test(run_num: int, dotnet_args: list[str], show_passed: bool):
     print(
         f"Run {run_num} Complete ({GREEN}Passed: {passed}{RESET} {RED}Failed: {failed}{RESET})"
     )
-    return failed_test_namespaces
+    return failed_test_namespaces, run_passed, run_failed
 
 
 def main():
@@ -109,12 +113,22 @@ def main():
     args = parser.parse_args()
 
     all_failed_namespaces = {}
+    total_passed = total_failed = 0
     for i in range(1, args.runs + 1):
-        failed_namespaces = run_test(i, args.dotnet_args, args.show_passed)
+        failed_namespaces, run_passed, run_failed = run_test(
+            i, args.dotnet_args, args.show_passed
+        )
+        total_passed += run_passed
+        total_failed += run_failed
         for ns in failed_namespaces:
             if ns not in all_failed_namespaces:
                 all_failed_namespaces[ns] = 0
             all_failed_namespaces[ns] += 1
+
+    print(f"\n{LIGHT_BLUE}====Test Summary:===={RESET}")
+    print(f"Total Runs: {args.runs}")
+    print(f"\n{GREEN}Total Passed: {total_passed}{RESET}")
+    print(f"\n{RED}Total Failed: {total_failed}{RESET}")
 
     if all_failed_namespaces:
         print(f"\n{RED}Failed Tests Summary:{RESET}")
