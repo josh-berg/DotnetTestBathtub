@@ -31,8 +31,8 @@ def run_test(run_num: int, dotnet_args: list[str], show_passed: bool):
     )
 
     keep = False
-    printed_total = False
     passed = failed = 0
+    failed_test_namespaces = []  # Collect namespaces for failed tests in this run
 
     for line in process.stdout:
         line = line.rstrip()
@@ -44,26 +44,24 @@ def run_test(run_num: int, dotnet_args: list[str], show_passed: bool):
             continue
 
         # Stop printing lines after a log if run is done
-        if re.search(r"Test Run Successful.", line):
+        if re.search(r"Test Run Successful.", line) or re.search(
+            r"Test Run Failed.", line
+        ):
             keep = False
-            continue
-
-        # Total tests line
-        if line.startswith("Total tests:"):
-            match = re.search(r"Total tests:\s+(\d+)", line)
-            if match and not printed_total:
-                print(
-                    f"{LIGHT_BLUE}Discovered {match.group(1)} tests{RESET}",
-                    file=sys.stderr,
-                )
-                printed_total = True
             continue
 
         # Per-test result lines (Passed/Failed)
         if re.match(r"^\s+(Passed\s|Failed\s)", line):
-            if line.startswith("Failed "):
+            if "Failed " in line:
                 print(colorize_failed(line))
                 keep = True
+                # Try to extract the namespace from the test name
+                test_match = re.search(r"Failed\s+(.+?)\s*\[", line)
+                if test_match:
+                    full_test_name = test_match.group(1)
+                    failed_test_namespaces.append(full_test_name)
+                else:
+                    failed_test_namespaces.append("<unknown>")
             else:
                 if show_passed:
                     print(colorize_failed(line))
@@ -88,6 +86,7 @@ def run_test(run_num: int, dotnet_args: list[str], show_passed: bool):
     print(
         f"Run {run_num} Complete ({GREEN}Passed: {passed}{RESET} {RED}Failed: {failed}{RESET})"
     )
+    return failed_test_namespaces
 
 
 def main():
@@ -109,8 +108,20 @@ def main():
     )
     args = parser.parse_args()
 
+    all_failed_namespaces = {}
     for i in range(1, args.runs + 1):
-        run_test(i, args.dotnet_args, args.show_passed)
+        failed_namespaces = run_test(i, args.dotnet_args, args.show_passed)
+        for ns in failed_namespaces:
+            if ns not in all_failed_namespaces:
+                all_failed_namespaces[ns] = 0
+            all_failed_namespaces[ns] += 1
+
+    if all_failed_namespaces:
+        print(f"\n{RED}Failed Tests Summary:{RESET}")
+        for ns, count in sorted(all_failed_namespaces.items(), key=lambda x: -x[1]):
+            print(f"  {ns}: {count} failures")
+    else:
+        print(f"\n{GREEN}No test failures detected in any namespace!{RESET}")
 
 
 if __name__ == "__main__":

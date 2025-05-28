@@ -33,7 +33,6 @@ def run_test(run_num: int, dotnet_args: list[str]):
     )
 
     keep = False
-    printed_total = False
     passed = failed = 0
 
     for line in process.stdout:
@@ -45,15 +44,11 @@ def run_test(run_num: int, dotnet_args: list[str]):
             keep = True
             continue
 
-        # Total tests line
-        if line.startswith("Total tests:"):
-            match = re.search(r"Total tests:\s+(\d+)", line)
-            if match and not printed_total:
-                print(
-                    f"{LIGHT_BLUE}Discovered {match.group(1)} tests{RESET}",
-                    file=sys.stderr,
-                )
-                printed_total = True
+        # Stop printing lines after a log if run is done
+        if re.search(r"Test Run Successful.", line) or re.search(
+            r"Test Run Failed.", line
+        ):
+            keep = False
             continue
 
         # Per-test result lines (Passed/Failed)
