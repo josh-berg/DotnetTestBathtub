@@ -72,7 +72,7 @@ def run_test(run_num: int, additional_dotnet_args: list[str]):
 
         # Per-test result lines (Passed/Failed)
         if re.match(r"^\s+(Passed\s|Failed\s)", line):
-            if "Failed " in line:
+            if re.match(r"^\s+(Failed\s)", line):
                 print(colorize_failed(line))
                 keep = True
             else:
