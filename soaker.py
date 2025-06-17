@@ -29,8 +29,7 @@ def run_test(run_num: int, additional_dotnet_args: list[str], show_passed: bool)
         "test",
         "-v",
         "n",
-        "-l",
-        '"console;verbosity=detailed"',
+        "-l:console;verbosity=detailed",
     ]
     no_restore_and_build_args = ["--no-restore", "--no-build"]
 
